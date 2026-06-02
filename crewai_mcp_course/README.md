@@ -52,6 +52,30 @@ graph TD
     C -->|Final Report| E[Output]
 ```
 
+## Try it without a real server (mock FastMCP)
+
+You don't need to deploy a real FastMCP server to run Lessons 2 and 3. This repo
+ships a zero-dependency mock server, `mock_fastmcp_server.py`, that implements
+the `POST /query` and `POST /store` endpoints the lessons use.
+
+In one terminal, start the mock server:
+```bash
+python mock_fastmcp_server.py            # serves http://127.0.0.1:8000, api key "test-key"
+```
+
+In another terminal, point the lessons at it and run them:
+```bash
+export FASTMCP_URL=http://127.0.0.1:8000
+export FASTMCP_API_KEY=test-key
+export OPENAI_API_KEY=sk-...              # still needed: the agents are driven by an LLM
+python lesson2_mcp_integration.py
+```
+
+The mock keeps stored findings in memory (they reset when it stops) and returns
+clearly-labelled `[mock data]` answers, so it's obvious which content came from
+the server versus the LLM. It also exposes `GET /health` and `GET /fetch?key=`
+for quick manual testing with `curl`.
+
 ## Getting Started
 
 ### Using pip (traditional method)
