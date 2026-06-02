@@ -35,14 +35,11 @@ parsing in FastMCPQueryTool to match your server's actual contract.
 import os
 import sys
 
-import requests
 from dotenv import load_dotenv
 
-load_dotenv()
+import fastmcp_client
 
-# A single shared timeout (seconds) for all MCP calls. Network calls must never
-# hang forever, otherwise an agent run can stall indefinitely.
-MCP_TIMEOUT = 30
+load_dotenv()
 
 
 def check_environment() -> None:
@@ -80,42 +77,12 @@ class FastMCPQueryTool(BaseTool):
     )
 
     def _run(self, query: str) -> str:
-        """Execute the MCP call. Always returns a string for the agent.
+        """Execute the MCP call via the shared client.
 
-        On failure we return a human-readable error message rather than raising,
-        so the agent can decide how to proceed (e.g. retry with a new query)
-        instead of the whole crew crashing.
+        All the HTTP, auth, and error handling lives in fastmcp_client so it can
+        be tested offline without CrewAI or an LLM (see test_offline.py).
         """
-        base_url = os.environ["FASTMCP_URL"].rstrip("/")
-        endpoint = f"{base_url}/query"
-        headers = {
-            "Authorization": f"Bearer {os.environ['FASTMCP_API_KEY']}",
-            "Content-Type": "application/json",
-        }
-
-        try:
-            response = requests.post(
-                endpoint,
-                headers=headers,
-                json={"query": query},
-                timeout=MCP_TIMEOUT,
-            )
-            response.raise_for_status()
-        except requests.exceptions.Timeout:
-            return f"[fastmcp_query error] Request timed out after {MCP_TIMEOUT}s."
-        except requests.exceptions.HTTPError as exc:
-            status = exc.response.status_code if exc.response is not None else "?"
-            if status == 401:
-                return "[fastmcp_query error] Authentication failed (401). Check FASTMCP_API_KEY."
-            return f"[fastmcp_query error] Server returned HTTP {status}."
-        except requests.exceptions.RequestException as exc:
-            return f"[fastmcp_query error] Could not reach the MCP server: {exc}"
-
-        # Be defensive about the response shape; servers differ.
-        try:
-            return str(response.json().get("result", response.text))
-        except ValueError:
-            return response.text
+        return fastmcp_client.query(query)
 
 
 def build_crew():

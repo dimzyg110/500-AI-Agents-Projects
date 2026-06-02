@@ -39,12 +39,11 @@ Run
 import os
 import sys
 
-import requests
 from dotenv import load_dotenv
 
-load_dotenv()
+import fastmcp_client
 
-MCP_TIMEOUT = 30
+load_dotenv()
 
 
 def check_environment() -> None:
@@ -64,17 +63,6 @@ def check_environment() -> None:
 from crewai.tools import BaseTool  # noqa: E402
 
 
-def _mcp_headers() -> dict:
-    return {
-        "Authorization": f"Bearer {os.environ['FASTMCP_API_KEY']}",
-        "Content-Type": "application/json",
-    }
-
-
-def _mcp_base_url() -> str:
-    return os.environ["FASTMCP_URL"].rstrip("/")
-
-
 class FastMCPQueryTool(BaseTool):
     """Read live information from the FastMCP server (same as Lesson 2)."""
 
@@ -85,20 +73,7 @@ class FastMCPQueryTool(BaseTool):
     )
 
     def _run(self, query: str) -> str:
-        try:
-            response = requests.post(
-                f"{_mcp_base_url()}/query",
-                headers=_mcp_headers(),
-                json={"query": query},
-                timeout=MCP_TIMEOUT,
-            )
-            response.raise_for_status()
-        except requests.exceptions.RequestException as exc:
-            return f"[fastmcp_query error] {exc}"
-        try:
-            return str(response.json().get("result", response.text))
-        except ValueError:
-            return response.text
+        return fastmcp_client.query(query)
 
 
 class FastMCPStoreTool(BaseTool):
@@ -118,19 +93,7 @@ class FastMCPStoreTool(BaseTool):
         if ":" not in payload:
             return "[fastmcp_store error] Input must be in the form 'key: value'."
         key, _, value = payload.partition(":")
-        key, value = key.strip(), value.strip()
-
-        try:
-            response = requests.post(
-                f"{_mcp_base_url()}/store",
-                headers=_mcp_headers(),
-                json={"key": key, "value": value},
-                timeout=MCP_TIMEOUT,
-            )
-            response.raise_for_status()
-        except requests.exceptions.RequestException as exc:
-            return f"[fastmcp_store error] {exc}"
-        return f"Stored finding under key '{key}'."
+        return fastmcp_client.store(key.strip(), value.strip())
 
 
 def build_crew():
