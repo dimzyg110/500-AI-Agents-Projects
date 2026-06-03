@@ -1,0 +1,35 @@
+name: CrewAI MCP Course - Offline Test
+
+# Runs the dependency-light offline test for the crewai_mcp_course folder.
+# It needs no API keys or secrets: it boots the in-process mock FastMCP server
+# and exercises the shared client used by the lesson tools.
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "crewai_mcp_course/**"
+      - ".github/workflows/crewai-mcp-course-test.yml"
+  pull_request:
+    paths:
+      - "crewai_mcp_course/**"
+      - ".github/workflows/crewai-mcp-course-test.yml"
+
+jobs:
+  offline-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run offline test
+        working-directory: crewai_mcp_course
+        run: python test_offline.py
