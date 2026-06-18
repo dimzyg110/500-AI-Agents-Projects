@@ -52,6 +52,48 @@ graph TD
     C -->|Final Report| E[Output]
 ```
 
+## Try it without a real server (mock FastMCP)
+
+You don't need to deploy a real FastMCP server to run Lessons 2 and 3. This repo
+ships a zero-dependency mock server, `mock_fastmcp_server.py`, that implements
+the `POST /query` and `POST /store` endpoints the lessons use.
+
+In one terminal, start the mock server:
+```bash
+python mock_fastmcp_server.py            # serves http://127.0.0.1:8000, api key "test-key"
+```
+
+In another terminal, point the lessons at it and run them:
+```bash
+export FASTMCP_URL=http://127.0.0.1:8000
+export FASTMCP_API_KEY=test-key
+export OPENAI_API_KEY=sk-...              # still needed: the agents are driven by an LLM
+python lesson2_mcp_integration.py
+```
+
+The mock keeps stored findings in memory (they reset when it stops) and returns
+clearly-labelled `[mock data]` answers, so it's obvious which content came from
+the server versus the LLM. It also exposes `GET /health` and `GET /fetch?key=`
+for quick manual testing with `curl`.
+
+## Run the offline test (no API key needed)
+
+To verify the FastMCP integration end-to-end without an LLM key or even CrewAI
+installed, run the offline test. It starts the mock server in-process and
+exercises the shared client (`fastmcp_client.py`) — the same code the lesson
+tools use — covering the happy paths and the error handling (bad auth,
+unreachable server):
+
+```bash
+pip install requests          # the only dependency the test needs
+python test_offline.py
+```
+
+Expected output ends with `All checks PASSED` (exit code 0). This is safe to run
+in CI with no secrets configured. The lesson tools delegate their HTTP logic to
+`fastmcp_client.py`, so a green test means the data-plane the agents rely on
+works; only the LLM-driven orchestration itself still needs `OPENAI_API_KEY`.
+
 ## Getting Started
 
 ### Using pip (traditional method)
